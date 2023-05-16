@@ -15,23 +15,28 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 template_path = 'templates/template.pptx'
-
-# the folder to store the pptx file:
 output_directory = 'ppt_files'
-
-# powerpoint launguage
-launguage = "English"
-
 slide_notes = []
-
-# if step_by_step is True, the script will generate a powerpoint file only with the outline but without the notes first; the script will not call openai API to generate the notes until you press 'C' to continue.
-# if step_by_step is Fale, the script will generate the powerpoint file with the notes.
+launguage = "English"
 step_by_step = False
 
-###put your presenation subject and background information here: 
-ppt_title = "NIST Cybersecurity Framework"
-additional_info = "1. what is NIST Cybersecurity Framework; 2. how it works; 3. how NIST Cybersecurity Framework can enterprises to improve security. 4.what the the differences between NIST Cybersecurity Framework and other cybersecurity framework like MITRE ATT&CK Framework. "
-###
+ppt_title = "cyber fusion center"
+additional_info = "1. what is cyber fusion center and why is called cyber fusion center; 2. key functions and responsibilities of cyber fusion center; 3. the staffing of cyber fusion center; 4. the management of cyber fusion center; 5. the requirements of the role of head of cyber fusion center"
+
+#ppt_title = "cyber fusion center"
+#additional_info = "1. what is cyber fusion center and why is called cyber fusion center; 2. key functions and responsibilities of cyber fusion center; 3. the staffing of cyber fusion center; 4. the management of cyber fusion center; 5. the requirements of the role of head of cyber fusion center"
+
+
+#ppt_title = "NIST Cybersecurity Framework"
+#additional_info = "1. what is NIST Cybersecurity Framework; 2. how it works; 3. how NIST Cybersecurity Framework can enterprises to improve security. 4.what the the differences between NIST Cybersecurity Framework and other cybersecurity framework like MITRE ATT&CK Framework. "
+
+#ppt_title = "MITRE ATT&CK Framework"
+#additional_info = "1. what is MITRE ATT&CK Framework; 2. how it works; 3. how MITRE ATT&CK Framework can enterprises to improve security. "
+
+#ppt_title = "device fingerprinting and device risk identification"
+#additional_info = "1. what id device fingerprinting; 2. how it works; 3. how device fingerprinting can help identify device risk 4. key use cases; 5. key players in the market. "
+#additional_info = "1. the diffences between tranditional firewall and cloud firewall; 2. key features of cloud firwell; 3. the comparison of key players in cloud firewall market; 4. the future of cloud firewall market. "
+
 
 def generate_pptx(outlines, ppt_title, template_path, output_directory, add_notes=False):
     # Create a new PowerPoint presentation from template
@@ -87,23 +92,26 @@ def ensure_under_token_limit(conversation, max_tokens):
     
     return conversation
 
-# Step 1: Generate the outline for the PowerPoint
-conversation = [
-    {"role": "system", "content": "You act as a cybersecurity expert."},
+# Start a new conversation
+init_conversation = [
+    {"role": "system", "content": "You are a helpful assistant."},
     {"role": "user", "content": f"Please draft a presentation outlines about {ppt_title} in {launguage} for a 20-minutes talk; in the presentation, please mention following key points: {additional_info}."}
 ]
 
+# Step 1: Generate the outline for the PowerPoint
 outline_response = openai.ChatCompletion.create(
   model="gpt-3.5-turbo",
-  messages=conversation
+  messages=init_conversation
 )
 
+outline = outline_response['choices'][0]['message']['content']
+
+
 # Add the model's response to the conversation history
-conversation.append({"role": "assistant", "content": outline_response['choices'][0]['message']['content']})
+init_conversation.append({"role": "assistant", "content": f"{outline}"})
 
 # Extract each page's topic from the outline
 # Here it is assumed that each topic is on a separate line
-outline = outline_response['choices'][0]['message']['content']
 topics = outline.split('\n')
 topics = topics[2:-1]
 
@@ -126,12 +134,13 @@ if step_by_step:
     if choice != 'C' and choice != 'c':
         sys.exit()
 
-
+conversation = init_conversation
 # Open the file to write the content
 with open(f'ppt_files/{ppt_title}_ppt_notes-{launguage}.txt', 'w', encoding='utf8') as f:   
 # Step 2: Generate content for each topic
     for i, topic in enumerate(outlines):
-        conversation.append({"role": "user", "content": f"draft the PowerPoint notes in {launguage} in a spoken style to elaborate the slide that has the following content: {topic}"})
+        #conversation = init_conversation
+        conversation.append({"role": "user", "content": f"draft the presenation notes in {launguage} in a spoken style to elaborate slide {i}: {topic}"})
 
         # Ensure the conversation history does not exceed the maximum token limit
         conversation = ensure_under_token_limit(conversation, 3200)
@@ -150,7 +159,8 @@ with open(f'ppt_files/{ppt_title}_ppt_notes-{launguage}.txt', 'w', encoding='utf
         # Write the content to the file
         f.write(f"Slide {i+1} - {topic}: {presentation_notes}\n")        
         print(f"Slide {i+1} - {topic}: {presentation_notes}")
-    
+
+        
 
 if step_by_step:
     choice = input("Press 'Y' to regenerate presentation ppt file with notes, or any other key to exit: ")
@@ -158,5 +168,7 @@ if step_by_step:
         sys.exit()
     # Generate PowerPoint using outlines
 generate_pptx(outlines, ppt_title, template_path, output_directory, add_notes=True)
+
+
 
 
